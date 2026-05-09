@@ -32,7 +32,7 @@ sys.path.insert(0, str(project_root))
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -85,6 +85,7 @@ class BatchRenderRequest(BaseModel):
     """Batch render request — fetches pending articles from MongoDB."""
     max_videos: int = 5
     hour_slot: Optional[str] = None
+    background: bool = True
 
 
 class BatchRenderResponse(BaseModel):
@@ -229,35 +230,129 @@ async def render_video(request: RenderRequest):
 
 # ─── POST /batch-render — Fetch from MongoDB & render batch ─────────────────────
 
-@app.post("/batch-render", response_model=BatchRenderResponse)
-async def batch_render(request: BatchRenderRequest):
+def run_batch_render_task(articles: list, hour_slot: str, output_dir: Path):
     """
-    Fetch pending articles from MongoDB and render them sequentially.
-    This is the main endpoint for n8n's Hourly Render Workflow.
-
-    Flow:
-    1. Query MongoDB for pending articles (limit = max_videos)
-    2. For each article:
-       a. Mark as 'processing' in MongoDB
-       b. Render the video
-       c. Mark as 'completed' or 'failed' in MongoDB
-    3. Return summary
+    Sequence of rendering operations executed as a FastAPI background task.
+    Allows n8n requests to complete instantly while rendering continues on Render.com.
     """
     from app.database import (
-        fetch_pending_articles,
+        mark_processing,
+        mark_render_completed,
+        mark_render_failed,
+    )
+    from app.r2_storage import upload_video_to_r2
+
+    for article_doc in articles:
+        article_id = str(article_doc["_id"])
+        title = article_doc.get("title", "Untitled")
+
+        logger.info(f"[Background Task] Starting render for article {article_id}: {title[:50]}...")
+
+        # Mark as processing
+        try:
+            mark_processing(article_id, hour_slot)
+        except Exception as e:
+            logger.error(f"[Background Task] Failed to mark {article_id} as processing: {e}")
+            continue
+
+        # Build internal model
+        source_data = article_doc.get("source", {})
+        news = NewsArticle(
+            url=article_doc.get("url", ""),
+            title=title,
+            description=article_doc.get("description", ""),
+            urlToImage=article_doc.get("urlToImage", ""),
+            source=NewsSource(
+                id=source_data.get("id"),
+                name=source_data.get("name", ""),
+            ),
+            publishedAt=article_doc.get("publishedAt", ""),
+            author=article_doc.get("author"),
+            content=article_doc.get("content"),
+        )
+
+        # Render
+        start = time.time()
+        try:
+            renderer = VideoRenderer()
+            output_path = renderer.render(
+                news,
+                output_dir=output_dir,
+                output_filename=f"{article_id}.mp4",
+            )
+            elapsed = time.time() - start
+            file_size = output_path.stat().st_size / (1024 * 1024)
+
+            # Upload to Cloudflare R2
+            r2_url = upload_video_to_r2(output_path, hour_slot, article_id)
+
+            # Mark completed in MongoDB
+            mark_render_completed(
+                article_id=article_id,
+                video_path=str(output_path),
+                file_size_mb=file_size,
+                render_duration=elapsed,
+                video_r2_url=r2_url,
+            )
+            logger.info(f"[Background Task] Successfully finished rendering for article {article_id}")
+
+        except Exception as e:
+            elapsed = time.time() - start
+            logger.error(f"[Background Task] Failed to render {article_id}: {e}")
+            try:
+                mark_render_failed(article_id, str(e))
+            except Exception as dbe:
+                logger.error(f"[Background Task] Failed to update DB failure state for {article_id}: {dbe}")
+
+
+@app.post("/batch-render", response_model=BatchRenderResponse)
+async def batch_render(request: BatchRenderRequest, background_tasks: BackgroundTasks):
+    """
+    Fetch pending articles from MongoDB and render them.
+    Supports running either synchronously or in a FastAPI background task to avoid timeouts.
+    """
+    from app.database import fetch_pending_articles
+
+    hour_slot = request.hour_slot or _get_hour_slot()
+    output_dir = _get_output_dir(hour_slot)
+
+    # Fetch pending articles
+    articles = fetch_pending_articles(limit=request.max_videos)
+
+    if not articles:
+        return BatchRenderResponse(
+            status="completed",
+            hour_slot=hour_slot,
+            total_pending=0,
+            processed=0,
+            succeeded=0,
+            failed=0,
+            results=[]
+        )
+
+    if request.background:
+        # Spawn the background task and return immediately!
+        background_tasks.add_task(run_batch_render_task, articles, hour_slot, output_dir)
+        return BatchRenderResponse(
+            status="processing",
+            hour_slot=hour_slot,
+            total_pending=len(articles),
+            processed=0,
+            succeeded=0,
+            failed=0,
+            results=[]
+        )
+
+    # Otherwise run synchronously
+    from app.database import (
         mark_processing,
         mark_render_completed,
         mark_render_failed,
     )
 
-    hour_slot = request.hour_slot or _get_hour_slot()
-    output_dir = _get_output_dir(hour_slot)
     results = []
     succeeded = 0
     failed = 0
-
-    # Fetch pending articles
-    articles = fetch_pending_articles(limit=request.max_videos)
 
     for article_doc in articles:
         article_id = str(article_doc["_id"])

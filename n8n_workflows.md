@@ -136,7 +136,7 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
       "id": "bc3ef88d-bf8d-4e2e-8fa9-83bc8ef07641",
       "name": "Split Render Results",
       "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 1.2,
+      "typeVersion": 1,
       "position": [640, 300]
     },
     {
@@ -181,24 +181,25 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
     },
     {
       "parameters": {
-        "fields": {
-          "values": [
+        "values": {
+          "string": [
             {
               "name": "_id",
-              "stringValue": "={{ $('Split Render Results').item.json._id }}"
-            },
-            {
-              "name": "uploaded",
-              "type": "boolean",
-              "booleanValue": true
+              "value": "={{ $('Split Render Results').item.json._id }}"
             },
             {
               "name": "youtubeVideoId",
-              "stringValue": "={{ $json.id || 'not_available' }}"
+              "value": "={{ $json.id || 'not_available' }}"
             },
             {
               "name": "uploadedAt",
-              "stringValue": "={{ new Date().toISOString() }}"
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ],
+          "boolean": [
+            {
+              "name": "uploaded",
+              "value": true
             }
           ]
         },
@@ -207,7 +208,7 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
       "id": "c88f123d-4fa0-4da2-9b23-1d0fcba231a4",
       "name": "Prepare DB Update",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 3.2,
+      "typeVersion": 1,
       "position": [1300, 200]
     },
     {
@@ -220,7 +221,7 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
       "id": "abf12dfc-80fd-4da1-9c60-a89fdcf12314",
       "name": "Mark Uploaded in DB",
       "type": "n8n-nodes-base.mongoDb",
-      "typeVersion": 1.1,
+      "typeVersion": 1,
       "position": [1520, 200],
       "credentials": {
         "mongoDb": {

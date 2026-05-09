@@ -116,7 +116,7 @@ class SceneBuilder:
             draw = ImageDraw.Draw(canvas)
             draw_text_with_shadow(
                 draw,
-                (self.w // 2, self.h - 200),
+                (self.w // 2, self.h // 2 + 280),
                 date_str,
                 font_date,
                 fill=(200, 200, 200),
@@ -156,39 +156,42 @@ class SceneBuilder:
         canvas = Image.alpha_composite(canvas_rgba, overlay).convert("RGB")
         draw = ImageDraw.Draw(canvas)
 
-        # Headline text at bottom
+        # Headline text safely above bottom overlay
         font_headline = load_font(config.FONT_SIZE_HEADLINE)
         max_text_w = self.w - config.TEXT_MARGIN * 2
         lines = wrap_text(self.news.title, font_headline, max_text_w)
 
-        # Position text from bottom up
+        # Position text from safe lower-middle boundary
         line_h = config.FONT_SIZE_HEADLINE + config.LINE_SPACING
         total_text_h = len(lines) * line_h
-        y_start = self.h - total_text_h - 120
+        y_start = self.h - total_text_h - 450
 
         draw_multiline_center(
             draw, lines, font_headline, y_start, self.w,
             fill=config.COLOR_TEXT_WHITE, shadow_offset=3,
         )
 
-        # Source badge at top-left
+        # Source badge centered horizontally and nested right above headline
         font_source = load_font(config.FONT_SIZE_SMALL)
         badge_text = f"  {self.news.source_name.upper()}  "
         bbox = draw.textbbox((0, 0), badge_text, font=font_source)
         badge_w = bbox[2] - bbox[0] + 20
         badge_h = bbox[3] - bbox[1] + 16
 
+        badge_x = (self.w - badge_w) // 2
+        badge_y = y_start - badge_h - 40
+
         # Red badge background
         badge_overlay = Image.new("RGBA", (self.w, self.h), (0, 0, 0, 0))
         badge_draw = ImageDraw.Draw(badge_overlay)
         badge_draw.rounded_rectangle(
-            [40, 80, 40 + badge_w, 80 + badge_h],
+            [badge_x, badge_y, badge_x + badge_w, badge_y + badge_h],
             radius=6,
             fill=(220, 38, 38, 220),
         )
         canvas = Image.alpha_composite(canvas.convert("RGBA"), badge_overlay).convert("RGB")
         draw = ImageDraw.Draw(canvas)
-        draw.text((50, 84), badge_text, font=font_source, fill=config.COLOR_TEXT_WHITE)
+        draw.text((badge_x + 10, badge_y + 8), badge_text, font=font_source, fill=config.COLOR_TEXT_WHITE)
 
         return self._save(canvas, "scene2.png")
 

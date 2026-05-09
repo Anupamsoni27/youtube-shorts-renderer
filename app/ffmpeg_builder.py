@@ -96,8 +96,13 @@ class FFmpegBuilder:
                 "-crf", str(config.CRF),
                 "-pix_fmt", config.PIXEL_FORMAT,
                 "-t", str(duration),
-                str(output_path),
             ]
+
+            import os
+            if os.environ.get("RENDER"):
+                cmd.extend(["-x264-params", "rc-lookahead=5:bframes=0:ref=1"])
+
+            cmd.append(str(output_path))
 
             success = run_ffmpeg(cmd, f"Animate scene {i+1} ({duration}s)")
             if not success:
@@ -111,8 +116,10 @@ class FFmpegBuilder:
 
     def concatenate_scenes(self, scene_videos: list) -> Path:
         """
-        Concatenate scene videos with xfade crossfade transitions.
-        Uses FFmpeg's xfade filter for smooth transitions between scenes.
+        Concatenate scene videos.
+        Uses a dynamic approach:
+          - On Render: Uses ultra-lightweight direct cuts (concat filter) to bypass memory spikes and prevent OOMs.
+          - Locally: Uses smooth xfade crossfades for maximum production value.
         """
         output_path = config.TEMP_DIR / "concat.mp4"
 
@@ -121,24 +128,35 @@ class FFmpegBuilder:
         for vid in scene_videos:
             inputs.extend(["-i", str(vid)])
 
-        # Build xfade filter chain
-        # Each xfade takes two inputs and produces one output
-        # Offsets must account for previous xfade overlaps
-        filter_parts = []
-        accumulated_duration = self.scene_durations[0]
+        # Check if we are running on Render (resource-constrained environment)
+        import os
+        is_render = os.environ.get("RENDER") is not None
 
-        for i in range(1, len(scene_videos)):
-            offset = accumulated_duration - self.xfade_dur
-            in_label = f"[{i-1}:v]" if i == 1 else f"[v{i-1}]"
-            out_label = f"[v{i}]" if i < len(scene_videos) - 1 else "[vout]"
+        if is_render:
+            # ⚡ Ultra low-memory: Direct cut concatenation
+            # processes inputs one-by-one sequentially, using almost zero extra RAM.
+            num_inputs = len(scene_videos)
+            concat_inputs = "".join(f"[{i}:v]" for i in range(num_inputs))
+            filter_complex = f"{concat_inputs}concat=n={num_inputs}:v=1:a=0[vout]"
+            description = "Concatenate scenes with direct cuts (low memory)"
+        else:
+            # 🎨 High quality: Crossfade (xfade) transitions
+            filter_parts = []
+            accumulated_duration = self.scene_durations[0]
 
-            filter_parts.append(
-                f"{in_label}[{i}:v]xfade=transition=fade:"
-                f"duration={self.xfade_dur}:offset={offset}{out_label}"
-            )
-            accumulated_duration += self.scene_durations[i] - self.xfade_dur
+            for i in range(1, len(scene_videos)):
+                offset = accumulated_duration - self.xfade_dur
+                in_label = f"[{i-1}:v]" if i == 1 else f"[v{i-1}]"
+                out_label = f"[v{i}]" if i < len(scene_videos) - 1 else "[vout]"
 
-        filter_complex = ";".join(filter_parts)
+                filter_parts.append(
+                    f"{in_label}[{i}:v]xfade=transition=fade:"
+                    f"duration={self.xfade_dur}:offset={offset}{out_label}"
+                )
+                accumulated_duration += self.scene_durations[i] - self.xfade_dur
+
+            filter_complex = ";".join(filter_parts)
+            description = "Concatenate scenes with crossfade (local high-res)"
 
         cmd = [
             self.ffmpeg, "-y",
@@ -149,10 +167,15 @@ class FFmpegBuilder:
             "-preset", config.PRESET,
             "-crf", str(config.CRF),
             "-pix_fmt", config.PIXEL_FORMAT,
-            str(output_path),
         ]
 
-        success = run_ffmpeg(cmd, "Concatenate scenes with crossfade")
+        # Add memory limits for x264 if on Render
+        if is_render:
+            cmd.extend(["-x264-params", "rc-lookahead=5:bframes=0:ref=1"])
+
+        cmd.append(str(output_path))
+
+        success = run_ffmpeg(cmd, description)
         if not success:
             raise RuntimeError("Failed to concatenate scenes")
 

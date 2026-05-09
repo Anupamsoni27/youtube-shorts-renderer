@@ -3,6 +3,7 @@ Central configuration for the video rendering pipeline.
 All paths, dimensions, durations, colors, and typography settings live here.
 """
 
+import os
 import shutil
 from pathlib import Path
 
@@ -45,7 +46,8 @@ VIDEO_WIDTH = 1080
 VIDEO_HEIGHT = 1920
 FPS = 30
 CODEC = "libx264"
-PRESET = "medium"
+# Use ultrafast on Render to keep CPU and memory footprint very low, medium locally
+PRESET = "ultrafast" if os.environ.get("RENDER") else "medium"
 CRF = 23
 PIXEL_FORMAT = "yuv420p"
 AUDIO_CODEC = "aac"

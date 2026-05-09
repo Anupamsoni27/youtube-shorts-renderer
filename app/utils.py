@@ -173,7 +173,15 @@ def run_ffmpeg(cmd: list[str], description: str = "") -> bool:
     """
     Execute an FFmpeg command via subprocess.
     Logs the command and handles errors.
+    Automatically limits threading to 1 thread to avoid OOM crashes on
+    low-memory hosting platforms like Render.com.
     """
+    # Force single-threaded execution to heavily reduce RAM/CPU usage on constrained servers
+    if cmd and "ffmpeg" in str(cmd[0]).lower():
+        # Insert "-threads 1" immediately after the ffmpeg binary path
+        cmd.insert(1, "-threads")
+        cmd.insert(2, "1")
+
     logger.info(f"FFmpeg: {description}")
     logger.debug(f"Command: {' '.join(cmd)}")
 

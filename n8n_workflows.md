@@ -158,6 +158,8 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
     },
     {
       "parameters": {
+        "resource": "video",
+        "operation": "upload",
         "title": "={{ $('Split Render Results').item.json.title }} #shorts #news",
         "description": "Daily automated news summary. #news #shorts #viral",
         "videoFile": "data",

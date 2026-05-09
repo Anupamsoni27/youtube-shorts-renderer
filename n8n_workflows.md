@@ -179,32 +179,47 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
     },
     {
       "parameters": {
-        "operation": "update",
-        "collection": "news_records",
-        "updateKey": "_id",
         "fields": {
-          "fields": [
+          "values": [
+            {
+              "name": "_id",
+              "stringValue": "={{ $('Split Render Results').item.json._id }}"
+            },
             {
               "name": "uploaded",
               "type": "boolean",
-              "value": true
+              "booleanValue": true
             },
             {
               "name": "youtubeVideoId",
-              "value": "={{ $json.id }}"
+              "stringValue": "={{ $json.id || 'not_available' }}"
             },
             {
               "name": "uploadedAt",
-              "value": "={{ new Date().toISOString() }}"
+              "stringValue": "={{ new Date().toISOString() }}"
             }
           ]
-        }
+        },
+        "options": {}
+      },
+      "id": "c88f123d-4fa0-4da2-9b23-1d0fcba231a4",
+      "name": "Prepare DB Update",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "collection": "news_records",
+        "updateKey": "_id",
+        "fields": "uploaded,youtubeVideoId,uploadedAt"
       },
       "id": "abf12dfc-80fd-4da1-9c60-a89fdcf12314",
       "name": "Mark Uploaded in DB",
       "type": "n8n-nodes-base.mongoDb",
-      "typeVersion": 1,
-      "position": [1300, 300],
+      "typeVersion": 1.1,
+      "position": [1520, 300],
       "credentials": {
         "mongoDb": {
           "id": "your_mongodb_cred_id"
@@ -258,6 +273,17 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
       ]
     },
     "Upload YouTube Short": {
+      "main": [
+        [
+          {
+            "node": "Prepare DB Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare DB Update": {
       "main": [
         [
           {

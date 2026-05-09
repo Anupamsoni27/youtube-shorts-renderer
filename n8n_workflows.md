@@ -120,7 +120,7 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
       "id": "92f3acbc-83fa-4a2e-be8a-cda38fc71439",
       "name": "Query Completed & Unuploaded",
       "type": "n8n-nodes-base.mongoDb",
-      "typeVersion": 1.1,
+      "typeVersion": 1,
       "position": [420, 300],
       "credentials": {
         "mongoDb": {
@@ -173,11 +173,29 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
       "type": "n8n-nodes-base.youTube",
       "typeVersion": 1,
       "position": [1080, 200],
+      "onError": "continueRegularOutput",
       "credentials": {
         "youtubeOAuth2Api": {
           "id": "your_youtube_cred_id"
         }
       }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.id }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "f88d2bc3-48ef-4da0-bfcd-cda38fc71234",
+      "name": "Check If Upload Succeeded",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1300, 200]
     },
     {
       "parameters": {
@@ -209,7 +227,7 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
       "name": "Prepare DB Update",
       "type": "n8n-nodes-base.set",
       "typeVersion": 1,
-      "position": [1300, 200]
+      "position": [1520, 120]
     },
     {
       "parameters": {
@@ -222,7 +240,7 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
       "name": "Mark Uploaded in DB",
       "type": "n8n-nodes-base.mongoDb",
       "typeVersion": 1,
-      "position": [1520, 200],
+      "position": [1740, 120],
       "credentials": {
         "mongoDb": {
           "id": "your_mongodb_cred_id"
@@ -279,7 +297,25 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
       "main": [
         [
           {
+            "node": "Check If Upload Succeeded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Upload Succeeded": {
+      "main": [
+        [
+          {
             "node": "Prepare DB Update",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split Render Results",
             "type": "main",
             "index": 0
           }

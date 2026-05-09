@@ -2,7 +2,7 @@ services:
   - type: web
     name: video-shorts-renderer
     env: docker
-    plan: starter # Starter plan is recommended for running FFmpeg video processing (512MB-1GB RAM)
+    plan: free # Free plan allows deploying without credit card/payment details on Render
     numInstances: 1
     envVars:
       - key: MONGO_URI

@@ -1,0 +1,33 @@
+# Git and metadata
+.git
+.gitignore
+README.md
+n8n_workflows.md
+implementation_plan.md
+walkthrough.md
+task.md
+
+# Virtual environments
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local configuration and secrets
+.env
+*.local
+
+# Cache and temporary directories
+.pytest_cache/
+.coverage
+htmlcov/
+temp/*
+output/*
+logs/*
+
+# OS-specific files
+.DS_Store
+Thumbs.db

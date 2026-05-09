@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: video-shorts-renderer
+    env: docker
+    plan: starter # Starter plan is recommended for running FFmpeg video processing (512MB-1GB RAM)
+    numInstances: 1
+    envVars:
+      - key: MONGO_URI
+        value: mongodb+srv://anupamsoni27:Mystuff8358%401@india-01.kwer3ek.mongodb.net/
+      - key: MONGO_DB
+        value: newsapi
+      - key: MONGO_COLLECTION
+        value: news_records
+      
+      # Cloudflare R2 Settings (Fill these in on Render Dashboard)
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        value: news-videos
+      - key: R2_PUBLIC_URL
+        sync: false
+
+      # App limit overrides
+      - key: MAX_VIDEOS_PER_HOUR
+        value: 5
+      - key: CLEANUP_AFTER_HOURS
+        value: 2
+      - key: MAX_RETRY_COUNT
+        value: 3

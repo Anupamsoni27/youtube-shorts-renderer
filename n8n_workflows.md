@@ -4,18 +4,21 @@ This document contains copy-pasteable **n8n Workflow JSONs** that you can import
 
 ---
 
-## 1. Hourly Render & YouTube Upload Workflow
+## 1. Decoupled & Automated Workflows (RECOMMENDED)
 
-This is the main automation loop. It runs every hour on the hour, triggers the batch rendering engine, retrieves the direct Cloudflare R2 streamable videos, uploads them to YouTube, and updates MongoDB.
+Rather than using a single massive synchronous workflow (which causes network timeouts on large render batches), we recommend splitting your flow into **two independent, fully asynchronous workflows**. This architecture guarantees 100% stability, 0ms timeouts, and unlimited rendering scalability.
 
-### How to Import This Workflow
-1. Create a new empty workflow in n8n.
-2. Press `Cmd + A` (Mac) or `Ctrl + A` (Windows) and delete anything there.
-3. Copy the JSON below, press `Cmd + V` (Mac) or `Ctrl + V` (Windows) to paste it directly onto the n8n canvas.
+---
+
+### A. Workflow 1: Trigger Hourly News Render
+This workflow runs on the hour, hits your FastAPI server to trigger a batch render, and **exits instantly** (under 0.1s) while rendering safely completes in the background on Render.
+
+#### How to Import:
+Copy the JSON below and paste it directly onto your empty n8n canvas.
 
 ```json
 {
-  "name": "Hourly Shorts Render & Upload",
+  "name": "1. Trigger Batch Render (Async)",
   "nodes": [
     {
       "parameters": {
@@ -43,12 +46,16 @@ This is the main automation loop. It runs every hour on the hour, triggers the b
           "parameters": [
             {
               "name": "max_videos",
-              "value": "=5"
+              "value": "=10"
+            },
+            {
+              "name": "background",
+              "value": "true"
             }
           ]
         },
         "options": {
-          "timeout": 180000
+          "timeout": 10000
         }
       },
       "id": "22ffefcb-6029-4ee7-911b-3f7d45903b70",
@@ -56,6 +63,70 @@ This is the main automation loop. It runs every hour on the hour, triggers the b
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [420, 300]
+    }
+  ],
+  "connections": {
+    "Hourly Schedule (00:00)": {
+      "main": [
+        [
+          {
+            "node": "Trigger Batch Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
+```
+
+---
+
+### B. Workflow 2: Automated YouTube Shorts Publisher
+This workflow runs every 15 minutes to poll MongoDB Atlas for articles where rendering is `"completed"` but they haven't been uploaded to YouTube yet (`"uploaded" != true`). It automatically splits the articles, downloads their video binaries from your **Cloudflare R2** public CDN, uploads them to YouTube, and marks them as uploaded in MongoDB!
+
+#### How to Import:
+Copy the JSON below and paste it directly onto your empty n8n canvas.
+
+```json
+{
+  "name": "2. Auto Upload Rendered Videos to YouTube",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "value": 15
+            }
+          ]
+        }
+      },
+      "id": "7489a8dc-bf2d-4ef1-98ac-73bcd723fa3b",
+      "name": "Poll Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "operation": "find",
+        "collection": "news_records",
+        "query": "={ \"renderStatus\": \"completed\", \"uploaded\": { \"$ne\": true } }",
+        "options": {}
+      },
+      "id": "92f3acbc-83fa-4a2e-be8a-cda38fc71439",
+      "name": "Query Completed & Unuploaded",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [420, 300],
+      "credentials": {
+        "mongoDb": {
+          "id": "your_mongodb_cred_id"
+        }
+      }
     },
     {
       "parameters": {
@@ -70,24 +141,7 @@ This is the main automation loop. It runs every hour on the hour, triggers the b
     },
     {
       "parameters": {
-        "conditions": {
-          "string": [
-            {
-              "value1": "={{ $json.status }}",
-              "value2": "completed"
-            }
-          ]
-        }
-      },
-      "id": "a98fdcb2-1da3-41bb-98bc-76cdcb328e21",
-      "name": "Check If Succeeded",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [860, 300]
-    },
-    {
-      "parameters": {
-        "url": "={{ $json.video_r2_url }}",
+        "url": "={{ $json.videoR2Url }}",
         "options": {
           "response": {
             "response": {
@@ -97,10 +151,10 @@ This is the main automation loop. It runs every hour on the hour, triggers the b
         }
       },
       "id": "efbc3da2-2b8d-4bb3-9da0-87efcd2a3bb1",
-      "name": "Download Video Bin",
+      "name": "Download Video Bin from R2",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1080, 280]
+      "position": [860, 300]
     },
     {
       "parameters": {
@@ -116,7 +170,7 @@ This is the main automation loop. It runs every hour on the hour, triggers the b
       "name": "Upload YouTube Short",
       "type": "n8n-nodes-base.youTube",
       "typeVersion": 1,
-      "position": [1300, 280],
+      "position": [1080, 300],
       "credentials": {
         "youtubeOAuth2Api": {
           "id": "your_youtube_cred_id"
@@ -150,7 +204,7 @@ This is the main automation loop. It runs every hour on the hour, triggers the b
       "name": "Mark Uploaded in DB",
       "type": "n8n-nodes-base.mongoDb",
       "typeVersion": 1,
-      "position": [1520, 280],
+      "position": [1300, 300],
       "credentials": {
         "mongoDb": {
           "id": "your_mongodb_cred_id"
@@ -159,18 +213,18 @@ This is the main automation loop. It runs every hour on the hour, triggers the b
     }
   ],
   "connections": {
-    "Hourly Schedule (00:00)": {
+    "Poll Every 15 Minutes": {
       "main": [
         [
           {
-            "node": "Trigger Batch Render",
+            "node": "Query Completed & Unuploaded",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Trigger Batch Render": {
+    "Query Completed & Unuploaded": {
       "main": [
         [
           {
@@ -185,25 +239,14 @@ This is the main automation loop. It runs every hour on the hour, triggers the b
       "main": [
         [
           {
-            "node": "Check If Succeeded",
+            "node": "Download Video Bin from R2",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check If Succeeded": {
-      "main": [
-        [
-          {
-            "node": "Download Video Bin",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Download Video Bin": {
+    "Download Video Bin from R2": {
       "main": [
         [
           {

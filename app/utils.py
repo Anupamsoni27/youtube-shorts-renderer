@@ -75,6 +75,45 @@ def ensure_fonts() -> None:
             sys.exit(1)
 
 
+def ensure_r2_assets() -> None:
+    """
+    Ensure base assets (bg.mp4, music.mp3, logo.png) are present in the assets/ folder.
+    If they are missing, automatically download them from the Cloudflare R2 bucket.
+    This enables seamless deployments on Render without pushing massive files to Git.
+    """
+    import os
+    config.ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Map of local files to their respective target filenames in Cloudflare R2
+    assets_to_sync = {
+        config.BG_VIDEO: "bg.mp4",
+        config.MUSIC_FILE: "music.mp3",
+        config.LOGO_FILE: "logo.png"
+    }
+
+    # Only sync if there is actually at least one missing file
+    missing_assets = {path: key for path, key in assets_to_sync.items() if not path.exists()}
+    if not missing_assets:
+        return
+
+    from app.r2_storage import get_r2_client
+    s3 = get_r2_client()
+    if s3 is None:
+        logger.info("Some base assets are missing locally, and Cloudflare R2 is not configured to auto-download them.")
+        return
+
+    bucket_name = os.getenv("R2_BUCKET_NAME")
+    for local_path, r2_key in missing_assets.items():
+        logger.info(f"Asset missing: {local_path.name} — Attempting auto-download from Cloudflare R2 bucket: {bucket_name}...")
+        try:
+            s3.download_file(bucket_name, r2_key, str(local_path))
+            logger.info(f"Asset auto-downloaded successfully: {local_path.name}")
+        except Exception as e:
+            logger.warning(
+                f"Could not auto-download {local_path.name} from R2 (skipping and using fallback mode): {e}"
+            )
+
+
 def load_font(size: int, bold: bool = True) -> ImageFont.FreeTypeFont:
     """Load a Montserrat font at the specified size."""
     font_path = config.FONT_EXTRABOLD if not bold else config.FONT_BOLD

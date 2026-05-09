@@ -155,6 +155,8 @@ async def startup():
     setup_dirs()
     check_ffmpeg()
     ensure_fonts()
+    from app.utils import ensure_r2_assets
+    ensure_r2_assets()
     logger.info("API server v2.0 ready")
 
 

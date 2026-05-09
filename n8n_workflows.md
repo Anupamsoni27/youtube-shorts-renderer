@@ -185,7 +185,7 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
         "conditions": {
           "string": [
             {
-              "value1": "={{ $json.id }}",
+              "value1": "={{ $json.uploadId }}",
               "operation": "isNotEmpty"
             }
           ]
@@ -207,7 +207,7 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
             },
             {
               "name": "youtubeVideoId",
-              "value": "={{ $json.id || 'not_available' }}"
+              "value": "={{ $json.uploadId || 'not_available' }}"
             },
             {
               "name": "uploadedAt",

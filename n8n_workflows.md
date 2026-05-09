@@ -37,7 +37,7 @@ This is the main automation loop. It runs every hour on the hour, triggers the b
     {
       "parameters": {
         "method": "POST",
-        "url": "http://localhost:8000/batch-render",
+        "url": "https://video-shorts-renderer.onrender.com/batch-render",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
@@ -259,7 +259,7 @@ This workflow triggers every hour at `:30` to invoke the `/cleanup` endpoint on 
     {
       "parameters": {
         "method": "DELETE",
-        "url": "http://localhost:8000/cleanup",
+        "url": "https://video-shorts-renderer.onrender.com/cleanup",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
@@ -323,7 +323,7 @@ This workflow runs every hour at `:45` to recover any articles stuck in `process
     {
       "parameters": {
         "method": "POST",
-        "url": "http://localhost:8000/reset-stale",
+        "url": "https://video-shorts-renderer.onrender.com/reset-stale",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [

@@ -91,7 +91,7 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
 
 ```json
 {
-  "name": "2. Auto Upload Rendered Videos to YouTube",
+  "name": "2. Auto Upload Rendered Videos to YouTube (One by One Loop)",
   "nodes": [
     {
       "parameters": {
@@ -130,13 +130,13 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
     },
     {
       "parameters": {
-        "fieldToSplit": "results",
+        "batchSize": 1,
         "options": {}
       },
       "id": "bc3ef88d-bf8d-4e2e-8fa9-83bc8ef07641",
       "name": "Split Render Results",
       "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 1,
+      "typeVersion": 1.2,
       "position": [640, 300]
     },
     {
@@ -154,7 +154,7 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
       "name": "Download Video Bin from R2",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [860, 300]
+      "position": [860, 200]
     },
     {
       "parameters": {
@@ -172,7 +172,7 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
       "name": "Upload YouTube Short",
       "type": "n8n-nodes-base.youTube",
       "typeVersion": 1,
-      "position": [1080, 300],
+      "position": [1080, 200],
       "credentials": {
         "youtubeOAuth2Api": {
           "id": "your_youtube_cred_id"
@@ -208,7 +208,7 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
       "name": "Prepare DB Update",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.2,
-      "position": [1300, 300]
+      "position": [1300, 200]
     },
     {
       "parameters": {
@@ -221,7 +221,7 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
       "name": "Mark Uploaded in DB",
       "type": "n8n-nodes-base.mongoDb",
       "typeVersion": 1.1,
-      "position": [1520, 300],
+      "position": [1520, 200],
       "credentials": {
         "mongoDb": {
           "id": "your_mongodb_cred_id"
@@ -290,6 +290,17 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
         [
           {
             "node": "Mark Uploaded in DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Uploaded in DB": {
+      "main": [
+        [
+          {
+            "node": "Split Render Results",
             "type": "main",
             "index": 0
           }

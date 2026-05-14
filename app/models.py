@@ -31,7 +31,7 @@ class NewsArticle:
     title_hi: str = ""
     content_hi: str = ""
     summary_hi: str = ""
-    viral_tags: list = field(default_factory=list)
+    viral_tags: str = ""
     uploaded: bool = False
 
     @property
@@ -63,6 +63,6 @@ class NewsArticle:
             title_hi=data.get("title_hi", ""),
             content_hi=data.get("content_hi", ""),
             summary_hi=data.get("summary_hi", ""),
-            viral_tags=data.get("viral_tags", []),
+            viral_tags=" ".join(data.get("viral_tags", [])) if isinstance(data.get("viral_tags"), list) else data.get("viral_tags", ""),
             uploaded=data.get("uploaded", False),
         )

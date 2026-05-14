@@ -201,7 +201,7 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
       "parameters": {
         "resource": "video",
         "operation": "upload",
-        "title": "={{ ($('Split Render Results').item.json.title_hi || $('Split Render Results').item.json.title).substring(0, 80) }} {{ ($('Split Render Results').item.json.viral_tags || []).join(' ') }}",
+        "title": "={{ ($('Split Render Results').item.json.title_hi || $('Split Render Results').item.json.title).substring(0, 80) }} {{ Array.isArray($('Split Render Results').item.json.viral_tags) ? $('Split Render Results').item.json.viral_tags.join(' ') : ($('Split Render Results').item.json.viral_tags || '') }}",
         "regionCode": "IN",
         "categoryId": "25",
         "options": {
@@ -507,7 +507,7 @@ Copy the JSON below and paste it directly onto your empty n8n canvas.
       "parameters": {
         "resource": "video",
         "operation": "upload",
-        "title": "={{ ($('Split Render Results').item.json.title_hi || $('Split Render Results').item.json.title).substring(0, 80) }} {{ ($('Split Render Results').item.json.viral_tags || []).join(' ') }}",
+        "title": "={{ ($('Split Render Results').item.json.title_hi || $('Split Render Results').item.json.title).substring(0, 80) }} {{ Array.isArray($('Split Render Results').item.json.viral_tags) ? $('Split Render Results').item.json.viral_tags.join(' ') : ($('Split Render Results').item.json.viral_tags || '') }}",
         "regionCode": "IN",
         "categoryId": "25",
         "options": {

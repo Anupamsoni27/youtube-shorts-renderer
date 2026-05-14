@@ -69,7 +69,7 @@ class RenderRequest(BaseModel):
     title_hi: str = ""
     content_hi: str = ""
     summary_hi: str = ""
-    viral_tags: list = []
+    viral_tags: str = ""
 
 
 class RenderResponse(BaseModel):

@@ -66,6 +66,10 @@ class RenderRequest(BaseModel):
     publishedAt: str = ""
     author: Optional[str] = None
     content: Optional[str] = None
+    title_hi: str = ""
+    content_hi: str = ""
+    summary_hi: str = ""
+    viral_tags: list = []
 
 
 class RenderResponse(BaseModel):
@@ -187,6 +191,10 @@ async def render_video(request: RenderRequest):
         publishedAt=request.publishedAt,
         author=request.author,
         content=request.content,
+        title_hi=request.title_hi,
+        content_hi=request.content_hi,
+        summary_hi=request.summary_hi,
+        viral_tags=request.viral_tags,
     )
 
     start = time.time()
@@ -256,20 +264,9 @@ def run_batch_render_task(articles: list, hour_slot: str, output_dir: Path):
             continue
 
         # Build internal model
-        source_data = article_doc.get("source", {})
-        news = NewsArticle(
-            url=article_doc.get("url", ""),
-            title=title,
-            description=article_doc.get("description", ""),
-            urlToImage=article_doc.get("urlToImage", ""),
-            source=NewsSource(
-                id=source_data.get("id"),
-                name=source_data.get("name", ""),
-            ),
-            publishedAt=article_doc.get("publishedAt", ""),
-            author=article_doc.get("author"),
-            content=article_doc.get("content"),
-        )
+        news = NewsArticle.from_dict(article_doc)
+        if not news.title:
+            news.title = title
 
         # Render
         start = time.time()
@@ -368,20 +365,9 @@ async def batch_render(request: BatchRenderRequest, background_tasks: Background
             continue
 
         # Build internal model
-        source_data = article_doc.get("source", {})
-        news = NewsArticle(
-            url=article_doc.get("url", ""),
-            title=title,
-            description=article_doc.get("description", ""),
-            urlToImage=article_doc.get("urlToImage", ""),
-            source=NewsSource(
-                id=source_data.get("id"),
-                name=source_data.get("name", ""),
-            ),
-            publishedAt=article_doc.get("publishedAt", ""),
-            author=article_doc.get("author"),
-            content=article_doc.get("content"),
-        )
+        news = NewsArticle.from_dict(article_doc)
+        if not news.title:
+            news.title = title
 
         # Render
         start = time.time()

@@ -77,32 +77,14 @@ def fetch_pending_articles(limit: int = 5) -> list:
     col = get_collection()
     max_retries = int(os.getenv("MAX_RETRY_COUNT", "3"))
 
-    query = {
-        "$or": [
-            {"rendered": False},
-            {"rendered": {"$exists": False}},
-        ],
-        "renderStatus": {"$nin": ["processing", "completed"]},
-        "$or": [
-            {"retryCount": {"$exists": False}},
-            {"retryCount": {"$lt": max_retries}},
-        ],
-    }
-
-    # Fix $or conflict — use $and to combine both $or conditions
+    # Use $and to safely combine multiple $or conditions.
+    # Note: No need to filter on 'uploaded' — uploaded records are deleted from DB.
     query = {
         "$and": [
             {
                 "$or": [
                     {"rendered": False},
                     {"rendered": {"$exists": False}},
-                ]
-            },
-            {
-                "$or": [
-                    {"uploaded": False},
-                    {"uploaded": {"$exists": False}},
-                    {"uploaded": None},
                 ]
             },
             {

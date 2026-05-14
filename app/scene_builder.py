@@ -159,7 +159,7 @@ class SceneBuilder:
         # Headline text safely above bottom overlay
         font_headline = load_font(config.FONT_SIZE_HEADLINE)
         max_text_w = self.w - config.TEXT_MARGIN * 2
-        lines = wrap_text(self.news.title, font_headline, max_text_w)
+        lines = wrap_text(self.news.title_hi or self.news.title, font_headline, max_text_w)
 
         # Position text from safe lower-middle boundary
         line_h = config.FONT_SIZE_HEADLINE + config.LINE_SPACING
@@ -223,7 +223,7 @@ class SceneBuilder:
         # Description text — centered
         font_body = load_font(config.FONT_SIZE_BODY)
         max_text_w = self.w - config.TEXT_MARGIN * 2 - 40
-        lines = wrap_text(self.news.description, font_body, max_text_w)
+        lines = wrap_text(self.news.summary_hi or self.news.description, font_body, max_text_w)
 
         line_h = config.FONT_SIZE_BODY + config.LINE_SPACING + 4
         total_text_h = len(lines) * line_h

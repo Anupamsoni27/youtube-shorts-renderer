@@ -28,6 +28,10 @@ class NewsArticle:
     publishedAt: str = ""
     author: Optional[str] = None
     content: Optional[str] = None
+    title_hi: str = ""
+    content_hi: str = ""
+    summary_hi: str = ""
+    viral_tags: list = field(default_factory=list)
     uploaded: bool = False
 
     @property
@@ -56,5 +60,9 @@ class NewsArticle:
             publishedAt=data.get("publishedAt", ""),
             author=data.get("author"),
             content=data.get("content"),
+            title_hi=data.get("title_hi", ""),
+            content_hi=data.get("content_hi", ""),
+            summary_hi=data.get("summary_hi", ""),
+            viral_tags=data.get("viral_tags", []),
             uploaded=data.get("uploaded", False),
         )

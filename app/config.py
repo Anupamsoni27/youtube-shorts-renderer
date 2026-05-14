@@ -33,12 +33,12 @@ FONTS_DIR = PROJECT_ROOT / "fonts"
 BG_VIDEO = ASSETS_DIR / "bg.mp4"
 MUSIC_FILE = ASSETS_DIR / "music.mp3"
 LOGO_FILE = ASSETS_DIR / "logo.png"
-FONT_BOLD = FONTS_DIR / "Montserrat-Bold.ttf"
+FONT_BOLD = FONTS_DIR / "NotoSansDevanagari-Bold.ttf"
 FONT_EXTRABOLD = FONT_BOLD  # Use Bold as fallback (ExtraBold is optional)
 
 # Google Fonts direct download URLs — only Bold is required
 FONT_URLS = {
-    "Montserrat-Bold.ttf": "https://github.com/JulietaUla/Montserrat/raw/master/fonts/ttf/Montserrat-Bold.ttf",
+    "NotoSansDevanagari-Bold.ttf": "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansDevanagari/NotoSansDevanagari-Bold.ttf",
 }
 
 # ─── Video Specifications ───────────────────────────────────────────────────────

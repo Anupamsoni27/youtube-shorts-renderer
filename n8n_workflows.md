@@ -39,6 +39,191 @@ If you already have this workflow, simply ensure it runs at `:00` each hour.
 > (query existing URLs first, insert only truly new articles) to avoid overwriting
 > render/upload status fields on existing records.
 
+#### How to Import:
+Copy the JSON below and paste it directly onto your empty n8n canvas.
+
+```json
+{
+  "name": "Fetch News — Cycle 1 (:00)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 * * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        304,
+        -192
+      ],
+      "id": "bfbd8473-33a2-47a6-92d3-c740a0b87c2a",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://newsapi.org/v2/everything",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "={\n  \"q\": \"paper leak\",\n  \"from\": \"{{$now.minus({days:1}).toFormat('yyyy-MM-dd')}}\",\n  \"to\": \"{{$now.minus({days:1}).toFormat('yyyy-MM-dd')}}\",\n  \"sortBy\": \"publishedAt\",\n  \"language\": \"en\",\n  \"pageSize\": 1\n}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "fd8fe6e9c24f4d38aa866f570af4ba43"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        528,
+        -192
+      ],
+      "id": "9e81e5f0-8712-4c24-b1be-0f118fb4a948",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items[0].json.articles.map(article => {\n  return {\n    json: {\n      ...article,\n      uploaded: false\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -192
+      ],
+      "id": "f4774df7-0bff-4bd6-9a8b-16b3b86b2e50",
+      "name": "Prepare Articles"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map((item, index) => {\n\n  const originalArticle =\n    $items(\"Prepare Articles\")[index].json;\n\n  let parsed = {};\n\n  try {\n\n    let responseText =\n      item.json.output[0].content[0].text;\n\n    responseText = responseText\n      .replace(/```json/g, '')\n      .replace(/```/g, '')\n      .trim();\n\n    parsed = JSON.parse(responseText);\n\n  } catch (err) {\n\n    parsed = {\n      title_hi: '',\n      content_hi: '',\n      summary_hi: '',\n      viral_tags: []\n    };\n  }\n\n  return {\n    json: {\n\n      // Original NewsAPI article\n      ...originalArticle,\n\n      // Hindi translated fields\n      title_hi: parsed.title_hi || '',\n      content_hi: parsed.content_hi || '',\n      summary_hi: parsed.summary_hi || '',\n\n      // Viral hashtags\n      viral_tags: parsed.viral_tags || [],\n\n      // Metadata\n      uploaded: false,\n      is_audio_generated: false,\n      renderStatus: 'pending',\n      retryCount: 0,\n      createdAt: new Date()\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        -192
+      ],
+      "id": "3afb575d-c168-46eb-aff1-29bd26ffa290",
+      "name": "Merge Translation"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { MongoClient } = require('mongodb');\n\nconst uri = 'mongodb+srv://anupamsoni27:Mystuff8358%401@india-01.kwer3ek.mongodb.net/';\n\nasync function run() {\n\n  const client = new MongoClient(uri);\n\n  await client.connect();\n\n  const db = client.db('newsapi');\n  const collection = db.collection('news_records');\n\n  const rawArticles = items.map(item => item.json);\n\n  const validArticles = rawArticles.filter(article =>\n    article && article.url && article.url.trim() !== ''\n  );\n\n  if (validArticles.length === 0) {\n\n    await client.close();\n\n    return [{\n      json: {\n        status: 'skipped',\n        inserted: 0,\n        skipped: 0\n      }\n    }];\n  }\n\n  const incomingUrls = validArticles.map(article => article.url.trim());\n\n  const existingDocs = await collection\n    .find({ url: { $in: incomingUrls } })\n    .project({ url: 1 })\n    .toArray();\n\n  const existingUrlsSet = new Set(existingDocs.map(doc => doc.url));\n\n  const newArticlesToInsert = [];\n\n  let skippedCount = 0;\n\n  for (const article of validArticles) {\n\n    const trimmedUrl = article.url.trim();\n\n    if (!existingUrlsSet.has(trimmedUrl)) {\n\n      const cleanArticle = {\n        ...article,\n        url: trimmedUrl\n      };\n\n      delete cleanArticle._id;\n\n      newArticlesToInsert.push(cleanArticle);\n\n    } else {\n      skippedCount++;\n    }\n  }\n\n  let insertedCount = 0;\n\n  if (newArticlesToInsert.length > 0) {\n\n    const result = await collection.insertMany(newArticlesToInsert);\n\n    insertedCount = result.insertedCount;\n  }\n\n  await client.close();\n\n  return [{\n    json: {\n      status: 'success',\n      inserted: insertedCount,\n      skipped: skippedCount,\n      totalIncoming: validArticles.length\n    }\n  }];\n}\n\nreturn run();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        -192
+      ],
+      "id": "054b75c1-38ad-4b79-8e88-d2e86c3c8559",
+      "name": "MongoDB Insert"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "id"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=Translate the following news into Hindi.\\n\\nRules:\\n\\n1. title_hi must be catchy and optimized for YouTube Shorts.\\n2. title_hi must NOT exceed 80 characters.\\n3. If translated title exceeds 80 characters, summarize it naturally.\\n4. Keep emotional and attention-grabbing wording where appropriate.\\n5. Generate viral_tags based specifically on the news topic, people, event, location, controversy, or trend mentioned in the article.\\n6. Do not generate generic unrelated hashtags.\\n7. Include a mix of Hindi and English trending-style hashtags.\\n8. Generate maximum 5 viral_tags only.\\n9. Return ONLY raw valid JSON.\\n10. Do not wrap response in markdown.\\n\\nReturn JSON in this format:\\n\\n{\\n  \"title_hi\": \"\",\\n  \"content_hi\": \"\",\\n  \"summary_hi\": \"\",\\n  \"viral_tags\": []\\n}\\n\\nTitle:\\n{{$json.title}}\\n\\nContent:\\n{{$json.content || \"\"}}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        960,
+        -192
+      ],
+      "id": "c9e27e6e-2bc4-4408-b154-aa9bdb0eebed",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "HYRplZMoyeCsrRUY",
+          "name": "OpenAI account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Prepare Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Articles": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Translation": {
+      "main": [
+        [
+          {
+            "node": "MongoDB Insert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Merge Translation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
+```
+
 ---
 
 ## Workflow 2: Render Cycle 1 (at :05)

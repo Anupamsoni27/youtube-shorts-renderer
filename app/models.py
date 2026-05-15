@@ -33,6 +33,7 @@ class NewsArticle:
     summary_hi: str = ""
     viral_tags: str = ""
     uploaded: bool = False
+    is_audio_generated: bool = False
 
     @property
     def source_name(self) -> str:
@@ -65,4 +66,5 @@ class NewsArticle:
             summary_hi=data.get("summary_hi", ""),
             viral_tags=" ".join(data.get("viral_tags", [])) if isinstance(data.get("viral_tags"), list) else data.get("viral_tags", ""),
             uploaded=data.get("uploaded", False),
+            is_audio_generated=data.get("is_audio_generated", False),
         )

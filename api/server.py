@@ -70,6 +70,7 @@ class RenderRequest(BaseModel):
     content_hi: str = ""
     summary_hi: str = ""
     viral_tags: str = ""
+    is_audio_generated: bool = False
 
 
 class RenderResponse(BaseModel):
@@ -195,6 +196,7 @@ async def render_video(request: RenderRequest):
         content_hi=request.content_hi,
         summary_hi=request.summary_hi,
         viral_tags=request.viral_tags,
+        is_audio_generated=request.is_audio_generated,
     )
 
     start = time.time()
